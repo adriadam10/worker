@@ -151,6 +151,13 @@ Now feel free to work on the project however you like, all code will be checked 
 This software is licensed under the terms of [CC0 1.0 Universal](LICENSE).
 You can find a copy of the license in the LICENSE file in the root folder
 
+This project uses the following software:
+
+- Aria2(c) licensed under GPL-v2, used for faster downloads: https://github.com/aria2/aria2
+
+No changes were made to any of the aforementioned software and copies of their licenses
+can be found next to their binaries within the bin folder.
+
 * * *
 
 © rlaphoenix 2026
