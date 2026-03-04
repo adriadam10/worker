@@ -138,7 +138,7 @@ class WorkerDisplay:
         stats.add_column(justify="right")
         stats.add_row(
             f"[cyan]{self._username} #{rank or '--'}[/cyan] [dim]({get_size(float(uploaded or 0))})[/dim] "
-            + f"Uploaded: [dim]{get_size(total_bytes)} ({done_count} files)[/dim] "
+            + f"Uploads: [dim]{done_count} ({get_size(total_bytes)})[/dim] "
             + f"Failures: [dim]{fail_count}[/dim]",
             f"[green]⬇{get_size(dl_speed)}/s[/green] [blue]⬆{get_size(ul_speed)}/s[/blue] "
             + f"[dim]{h:02d}:{m:02d}:{s:02d}[/dim]",
