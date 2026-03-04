@@ -70,7 +70,7 @@ async def process_job(
         try:
             # Download
             if not downloaded:
-                display.job_update(file_id, "DL", size=False)
+                display.job_update(file_id, "DL", size=known_size, waiting=False)
                 await download_file(
                     url,
                     local_path,
@@ -78,19 +78,21 @@ async def process_job(
                     known_size,
                     pre_allocation,
                     on_progress=lambda done, size: display.job_update(
-                        file_id=file_id, status="DL", size=size, done=done
+                        file_id=file_id, status="DL", size=size, done=done, waiting=False
                     ),
                 )
             file_size = local_path.stat().st_size
             downloaded = True
             # Upload
-            display.job_update(file_id, "UL", size=False, done=file_size or 0)
+            display.job_update(file_id, "UL", size=known_size, done=file_size or 0, waiting=True)
             await upload_file(
                 upload_server_url=upload_server_url,
                 token=token,
                 file_id=file_id,
                 path=local_path,
-                on_progress=lambda done, size: display.job_update(file_id=file_id, status="UL", size=size, done=done),
+                on_progress=lambda done, size: display.job_update(
+                    file_id=file_id, status="UL", size=size, done=done, waiting=False
+                ),
             )
             await report_job(server_url, token, file_id, "completed", bytes_downloaded=file_size)
             uploaded = True
@@ -98,7 +100,7 @@ async def process_job(
         except Exception as e:
             last_err = e
             if attempt < MAX_RETRIES:
-                display.job_update(file_id, "RT")
+                display.job_update(file_id, "RT", waiting=True)
                 await asyncio.sleep(RETRY_DELAY * attempt)
 
     if not uploaded:

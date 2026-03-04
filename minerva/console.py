@@ -52,13 +52,16 @@ class WorkerDisplay:
                 status="DL",
                 size=0,
                 done=0,
+                waiting=True,
                 start_time=now,
                 prev_done=0,
                 prev_time=now,
                 speed=0.0,
             )
 
-    def job_update(self, file_id: int, status: str, size: int | bool | None = None, done: int | None = None) -> None:
+    def job_update(
+        self, file_id: int, status: str, size: int | None = None, done: int | None = None, waiting: bool | None = None
+    ) -> None:
         now = time.monotonic()
         with self._lock:
             if file_id not in self.active:
@@ -75,13 +78,15 @@ class WorkerDisplay:
             job["status"] = status
             if size is not None:
                 job["size"] = size
+            job["waiting"] = waiting
 
     def job_done(self, file_id: int, label: str, ok: bool, note: str = "") -> None:
         with self._lock:
             job = self.active.pop(file_id, None)
+            job["waiting"] = False
             if ok:
                 self._total_done += 1
-                if job and isinstance(job["size"], int):
+                if job and job["size"]:
                     self._total_bytes += job["size"]
             else:
                 self._total_fails += 1
@@ -92,13 +97,14 @@ class WorkerDisplay:
                 entry += f"  [dim]{note}[/dim]"
             self.history.append(entry)
 
+    @staticmethod
+    def effective_speed(job: dict[str, Any]) -> int:
+        age = time.monotonic() - job["prev_time"]
+        decay = max(0.0, 1 - age / 3)
+        return max(0.0, job["speed"] * decay)
+
     def get_stats(self) -> Table:
         now = time.monotonic()
-
-        def effective_speed(job: dict[str, Any]) -> int:
-            age = now - job["prev_time"]
-            decay = max(0.0, 1 - age / 3)
-            return max(0.0, job["speed"] * decay)
 
         with self._lock:
             snapshot = list(self.active.values())
@@ -106,8 +112,8 @@ class WorkerDisplay:
             done_count = self._total_done
             fail_count = self._total_fails
             total_bytes = self._total_bytes
-            dl_speed = sum(effective_speed(x) for x in snapshot if x["status"] == "DL")
-            ul_speed = sum(effective_speed(x) for x in snapshot if x["status"] == "UL")
+            dl_speed = sum(self.effective_speed(x) for x in snapshot if x["status"] == "DL")
+            ul_speed = sum(self.effective_speed(x) for x in snapshot if x["status"] == "UL")
 
         h = int(elapsed_total // 3600)
         m = int((elapsed_total % 3600) // 60)
@@ -192,15 +198,15 @@ class WorkerDisplay:
             color = {"DL": "cyan", "UL": "yellow", "RT": "magenta"}.get(st, "white")
             size = info["size"]
             done = info["done"]
-            speed = info["speed"]
+            waiting = info["waiting"]
+            speed = self.effective_speed(info)
             elapsed = now - info["start_time"]
 
-            speed_str = f"[dim]{humanize.naturalsize(speed, gnu=True)}/s[/dim]" if speed > 0 else "[dim]—[/dim]"
-
-            if size:
-                pct = min(1.0, done / size)
+            if not waiting:
+                pct = min(1.0, done / (size or 1))
                 bar_w = 14
                 filled = int(bar_w * pct)
+                speed_str = f"[dim]{humanize.naturalsize(speed, gnu=True)}/s[/dim]" if speed > 0 else "[dim]—[/dim]"
                 bar = (
                     f"[{color}]"
                     + "█" * filled
@@ -210,12 +216,19 @@ class WorkerDisplay:
                     + "[/dim]"
                     + f" {pct * 100:4.0f}%"
                 )
-                size_str = humanize.naturalsize(size)
             else:
                 spin = _SPINNER[int(now * 8) % len(_SPINNER)]
                 elapsed_str = f"{int(elapsed // 60):02d}:{int(elapsed % 60):02d}"
-                bar = f"[{color}]{spin}[/{color}] [dim]{humanize.naturalsize(done)} — {elapsed_str}[/dim]"
-                size_str = "[dim]?[/dim]"
+                note = ""
+                if info["status"] == "DL":
+                    note = "Download waiting in queue..."
+                elif info["status"] == "UL":
+                    note = "Waiting on upload server..."
+                elif info["status"] == "RT":
+                    note = "Failed, retrying the job..."
+                speed_str = f"[{color}]{spin}[/{color}]"
+                bar = f"[dim]{note} {elapsed_str}[/dim]"
+            size_str = humanize.naturalsize(size)
 
             table.add_row(
                 f"[{color}]{st}[/{color}]",
