@@ -49,5 +49,8 @@ QUEUE_PREFETCH = int(os.environ.get("MINERVA_QUEUE_PREFETCH", 2))  # queue depth
 # console/logs
 HISTORY_LINES = int(os.environ.get("MINERVA_HISTORY_LINES", 5))  # completed jobs shown above active table
 
+# size lookup
+SIZE_IDX_FILE = Path(os.environ.get("MINERVA_SIZE_IDX_FILE", Path(__file__).parent / "data" / "sizes.idx"))
+
 # docker
 IS_DOCKER = os.environ.get("IS_DOCKER", "").lower() in ("1", "true", "yes")

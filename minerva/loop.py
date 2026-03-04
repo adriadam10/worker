@@ -4,6 +4,8 @@ from random import random
 
 import httpx
 import jwt
+from humanfriendly import parse_size
+from humanize import naturalsize
 from rich.live import Live
 
 from minerva.auth import auth_headers
@@ -11,6 +13,7 @@ from minerva.console import WorkerDisplay, console
 from minerva.constants import ARIA2C, MAX_RETRIES, QUEUE_PREFETCH
 from minerva.error_handling import _raise_if_upgrade_required
 from minerva.jobs import process_job
+from minerva.size_map import get_size
 
 _STOP = object()
 
@@ -24,6 +27,7 @@ async def worker_loop(
     batch_size: int,
     aria2c_connections: int,
     pre_allocation: str,
+    max_job_size: str,
     keep_files: bool,
 ) -> None:
     token_dec = jwt.decode(token, options={"verify_signature": False})
@@ -34,6 +38,7 @@ async def worker_loop(
     console.print(f"Concurrency:   {concurrency}")
     console.print(f"Retries:       {MAX_RETRIES}")
     console.print(f"Keep files:    {'yes' if keep_files else 'no'}")
+    console.print(f"Max job size:  {naturalsize(parse_size(max_job_size)) if max_job_size else 'N/A'}")
     console.print(f"Downloader:    {f'aria2c ({aria2c_connections} conns/job)' if ARIA2C else 'httpx'}")
     console.print()
 
@@ -51,6 +56,8 @@ async def worker_loop(
     stop_event = asyncio.Event()
     seen_ids: set[int] = set()
     display = WorkerDisplay()
+
+    max_job_size_bytes = parse_size(max_job_size) if max_job_size else None
 
     # ── Producer ────────────────────────────────────────────────────────────
     async def producer() -> None:
@@ -90,6 +97,18 @@ async def worker_loop(
                         file_id = job["file_id"]
                         if file_id in seen_ids:
                             continue
+
+                        if max_job_size_bytes:
+                            if not job.get("size") and job.get("url"):
+                                job["size"] = get_size(job["url"])
+                            if job.get("size") and job["size"] > max_job_size_bytes:
+                                console.print(
+                                    f"[yellow]Skipping job {file_id} "
+                                    f"({naturalsize(job['size'])} > "
+                                    f"{naturalsize(max_job_size_bytes)})[/yellow]"
+                                )
+                                continue
+
                         seen_ids.add(file_id)
                         await queue.put(job)
 

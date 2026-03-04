@@ -26,11 +26,13 @@ from minerva.constants import (
     CONCURRENCY,
     KEEP_FILES,
     SERVER_URL,
+    SIZE_IDX_FILE,
     TEMP_DIR,
     UPLOAD_SERVER_URL,
 )
 from minerva.doctor import doctor_cmd
 from minerva.loop import worker_loop
+from minerva.size_map import init_index
 from minerva.version_check import check_for_update
 
 
@@ -72,6 +74,7 @@ def status() -> None:
     help="Pre-allocation method when using aria2c (prealloc, falloc, none)",
 )
 @click.option("--temp-dir", default=str(TEMP_DIR), help="Temp download dir")
+@click.option("--max-job-size", default="", help="Skip jobs for files larger than a given size")
 @click.option("--keep-files", is_flag=True, default=KEEP_FILES, help="Keep downloaded files after upload")
 def run(
     ctx: click.Context,
@@ -82,16 +85,20 @@ def run(
     aria2c_connections: int,
     pre_allocation: str,
     temp_dir: str,
+    max_job_size: str,
     keep_files: bool,
 ) -> None:
     """Start downloading and uploading files."""
-    # Ensure user is logged-in first
+    # ensure user is logged-in first
     token = load_token()
     if not token:
         token = ctx.invoke(login, server=server)
     if not token:
         console.print("[red]Could not login, please try again...")
         return
+
+    # initialize the file size index
+    init_index(SIZE_IDX_FILE)
 
     # start main loop
     asyncio.run(
@@ -104,6 +111,7 @@ def run(
             batch_size,
             aria2c_connections,
             pre_allocation,
+            max_job_size,
             keep_files,
         )
     )
