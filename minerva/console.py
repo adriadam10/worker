@@ -47,7 +47,7 @@ class WorkerDisplay:
                 speed=0.0,
             )
 
-    def job_update(self, file_id: int, status: str, size: int | None = None, done: int | None = None) -> None:
+    def job_update(self, file_id: int, status: str, size: int | bool | None = None, done: int | None = None) -> None:
         now = time.monotonic()
         with self._lock:
             if file_id not in self.active:
@@ -70,7 +70,7 @@ class WorkerDisplay:
             job = self.active.pop(file_id, None)
             if ok:
                 self._total_done += 1
-                if job and job["size"]:
+                if job and isinstance(job["size"], int):
                     self._total_bytes += job["size"]
             icon = "[green]✓[/green]" if ok else "[red]✗[/red]"
             color = "green" if ok else "red"
