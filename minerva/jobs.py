@@ -40,7 +40,7 @@ async def process_job(
     file_id = job["file_id"]
     url = job["url"]
     dest_path = job["dest_path"]
-    label = urllib.parse.unquote(dest_path if len(dest_path) <= 60 else "…" + dest_path[-57:])
+    label = urllib.parse.unquote(dest_path)
     known_size = job.get("size", 0) or 0
     display.job_start(file_id, label)
 

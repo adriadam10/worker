@@ -1,7 +1,9 @@
 import collections
 import threading
 import time
+from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 
 import httpx
 import humanize
@@ -125,7 +127,7 @@ class WorkerDisplay:
                         for x in httpx.get("https://minerva-archive.org/api/leaderboard?limit=10000").json()
                         if x["discord_username"] == self._username
                     ),
-                    (None, None)
+                    (None, None),
                 )
                 self._leaderboard_last_fetch = now
         rank, uploaded = self._leaderboard_cache
@@ -179,8 +181,8 @@ class WorkerDisplay:
             padding=(0, 0),
         )
 
-        table.add_column("", width=3)
-        table.add_column("File")
+        table.add_column("Status", width=2)
+        table.add_column("File", justify="left")
         table.add_column("Size", justify="right")
         table.add_column("Speed", justify="right")
         table.add_column("Progress", justify="right")
@@ -217,7 +219,7 @@ class WorkerDisplay:
 
             table.add_row(
                 f"[{color}]{st}[/{color}]",
-                info["label"],
+                Path(urlparse(info["label"]).path).name,
                 size_str,
                 speed_str,
                 bar,
