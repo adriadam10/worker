@@ -21,6 +21,8 @@ EXTRA_ARGS: list[str] = [
     "-y",
     "--collect-all",
     "rich",
+    "--collect-all",
+    "readchar",
 ]
 
 
