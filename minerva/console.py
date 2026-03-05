@@ -33,6 +33,7 @@ class WorkerDisplay:
     """
 
     def __init__(self) -> None:
+        # All following variables are locked by _lock
         self.history: collections.deque = collections.deque(maxlen=HISTORY_LINES)
         self.active: dict[int, Any] = {}  # file_id -> dict
         self._lock = threading.Lock()
@@ -42,8 +43,10 @@ class WorkerDisplay:
         self._total_fails = 0
         self._total_bytes = 0
         self._username = None
-        self._leaderboard_lock = threading.Lock()
         self._leaderboard_cache: tuple[int | None, int | None] | tuple[None, None] = (None, None)
+
+        # All following variables are locked by _leaderboard_lock
+        self._leaderboard_lock = threading.Lock()
         self._leaderboard_last_fetch = 0
 
     def job_start(self, job: dict[str, Any], label: str) -> None:
@@ -119,8 +122,6 @@ class WorkerDisplay:
             total_bytes = self._total_bytes
             dl_speed = sum(self.effective_speed(x) for x in snapshot if x["status"] == "DL")
             ul_speed = sum(self.effective_speed(x) for x in snapshot if x["status"] == "UL")
-
-        with self._leaderboard_lock:
             rank, uploaded = self._leaderboard_cache
 
         h = int(elapsed_total // 3600)
@@ -153,9 +154,15 @@ class WorkerDisplay:
         now = time.monotonic()
         personal_stats: tuple[int | None, int | None] | tuple[None, None] | None = None
 
+        if self._leaderboard_lock.locked():
+            return
+
         with self._leaderboard_lock:
+            with self._lock:
+                previous_leaderboard = self._leaderboard_cache
+
             if self._username:
-                if now - self._leaderboard_last_fetch > 180 or self._leaderboard_cache is None:
+                if now - self._leaderboard_last_fetch > 180 or previous_leaderboard is None:
                     try:
                         personal_stats = next(
                             (
@@ -167,10 +174,12 @@ class WorkerDisplay:
                             ),
                             (None, None),
                         )
-                    except (JSONDecodeError, httpx.ConnectError, httpx.ReadTimeout):
-                        pass
+                    except (JSONDecodeError, httpx.ConnectError, httpx.ReadTimeout) as e:
+                        console.print(f"[yellow]Currently unable to refresh leaderboard rank: {e}.")
                     self._leaderboard_last_fetch = now
-            if personal_stats is not None:
+
+        if personal_stats is not None:
+            with self._lock:
                 self._leaderboard_cache = personal_stats
 
     def __rich__(self) -> Group:
