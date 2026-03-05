@@ -7,7 +7,7 @@ from typing import Any
 from rich.console import Console
 
 from minerva import __version__
-from minerva.constants import IS_DOCKER, TOKEN_FILE, AUTH_HOST, AUTH_PORT
+from minerva.constants import AUTH_HOST, AUTH_PORT, IS_DOCKER, TOKEN_FILE
 
 
 def auth_headers(token: str) -> dict[str, str]:
