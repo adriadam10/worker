@@ -171,8 +171,7 @@ class WorkerDisplay:
                         pass
                     self._leaderboard_last_fetch = now
             if personal_stats is not None:
-                with self._leaderboard_lock:
-                    self._leaderboard_cache = personal_stats
+                self._leaderboard_cache = personal_stats
 
     def __rich__(self) -> Group:
         now = time.monotonic()
