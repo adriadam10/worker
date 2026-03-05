@@ -43,6 +43,7 @@ CONNECTIVITY_CHECK_TIMEOUT = 5.0
 
 # jobs
 REPORT_RETRIES = 20
+JOB_STATUS_RETRIES = 10
 CACHE_FILE = Path(os.environ.get("MINERVA_CACHE_FILE", Path.home() / ".minerva-dpn" / "sessions.json"))
 
 # worker loop
