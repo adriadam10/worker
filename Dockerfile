@@ -14,4 +14,5 @@ RUN uv sync --frozen --no-dev
 
 ENV IS_DOCKER=true PYTHONUNBUFFERED=1
 
-CMD ["uv", "run", "minerva", "run"]
+ENTRYPOINT ["uv", "run", "minerva"]
+CMD ["run"]

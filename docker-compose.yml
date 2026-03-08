@@ -3,8 +3,7 @@ services:
     image: ghcr.io/minerva-archive/worker:latest
     build:
       context: .
-    # change your worker settings here:
-    command: ["uv", "run", "minerva", "run"]
+    entrypoint: ["uv", "run", "minerva"]
     environment:
       - MINERVA_SERVER
       - MINERVA_TOKEN_FILE
